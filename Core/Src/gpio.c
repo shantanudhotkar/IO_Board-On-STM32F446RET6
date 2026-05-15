@@ -60,15 +60,16 @@ void MX_GPIO_Init(void)
                           |output_01_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1|output_13_Pin|output_16_Pin|output_09_Pin
-                          |output_17_Pin|output_18_Pin|output_10_Pin|output_03_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, output_15_Pin|output_13_Pin|output_16_Pin|output_09_Pin
+                          |output_17_Pin|output_18_Pin|nuke_power_signal_Pin|output_10_Pin
+                          |output_03_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : input_07_Pin input_08_Pin input_09_Pin input_18_Pin
-                           input_16_Pin input_15_Pin input_17_Pin input_01_Pin
-                           input_02_Pin input_03_Pin */
+                           input_16_Pin input_15_Pin input_17_Pin Push_Button_Pin
+                           input_01_Pin input_02_Pin input_03_Pin */
   GPIO_InitStruct.Pin = input_07_Pin|input_08_Pin|input_09_Pin|input_18_Pin
-                          |input_16_Pin|input_15_Pin|input_17_Pin|input_01_Pin
-                          |input_02_Pin|input_03_Pin;
+                          |input_16_Pin|input_15_Pin|input_17_Pin|Push_Button_Pin
+                          |input_01_Pin|input_02_Pin|input_03_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
@@ -84,6 +85,12 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : input_12_Pin */
+  GPIO_InitStruct.Pin = input_12_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(input_12_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : output_06_Pin output_08_Pin output_14_Pin output_07_Pin
                            output_05_Pin */
@@ -103,16 +110,20 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : input_14_Pin input_06_Pin gpio_input_19_additional_Pin */
-  GPIO_InitStruct.Pin = input_14_Pin|input_06_Pin|gpio_input_19_additional_Pin;
+  /*Configure GPIO pins : input_14_Pin Deadman_Switch_Pin emergency_button_critical_security_Pin input_06_Pin
+                           gpio_input_19_additional_Pin */
+  GPIO_InitStruct.Pin = input_14_Pin|Deadman_Switch_Pin|emergency_button_critical_security_Pin|input_06_Pin
+                          |gpio_input_19_additional_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PB1 output_13_Pin output_16_Pin output_09_Pin
-                           output_17_Pin output_18_Pin output_10_Pin output_03_Pin */
-  GPIO_InitStruct.Pin = GPIO_PIN_1|output_13_Pin|output_16_Pin|output_09_Pin
-                          |output_17_Pin|output_18_Pin|output_10_Pin|output_03_Pin;
+  /*Configure GPIO pins : output_15_Pin output_13_Pin output_16_Pin output_09_Pin
+                           output_17_Pin output_18_Pin nuke_power_signal_Pin output_10_Pin
+                           output_03_Pin */
+  GPIO_InitStruct.Pin = output_15_Pin|output_13_Pin|output_16_Pin|output_09_Pin
+                          |output_17_Pin|output_18_Pin|nuke_power_signal_Pin|output_10_Pin
+                          |output_03_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
