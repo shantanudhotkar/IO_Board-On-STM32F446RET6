@@ -77,8 +77,6 @@ void Error_Handler(void);
 #define input_17_GPIO_Port GPIOC
 #define input_10_Pin GPIO_PIN_0
 #define input_10_GPIO_Port GPIOA
-#define input_12_Pin GPIO_PIN_1
-#define input_12_GPIO_Port GPIOA
 #define output_06_Pin GPIO_PIN_6
 #define output_06_GPIO_Port GPIOA
 #define output_08_Pin GPIO_PIN_7
@@ -87,8 +85,6 @@ void Error_Handler(void);
 #define gpio_output_19_additional_GPIO_Port GPIOC
 #define input_14_Pin GPIO_PIN_0
 #define input_14_GPIO_Port GPIOB
-#define output_15_Pin GPIO_PIN_1
-#define output_15_GPIO_Port GPIOB
 #define output_13_Pin GPIO_PIN_2
 #define output_13_GPIO_Port GPIOB
 #define output_16_Pin GPIO_PIN_10
@@ -107,8 +103,6 @@ void Error_Handler(void);
 #define output_01_GPIO_Port GPIOC
 #define output_14_Pin GPIO_PIN_8
 #define output_14_GPIO_Port GPIOA
-#define output_12_Pin GPIO_PIN_9
-#define output_12_GPIO_Port GPIOA
 #define output_07_Pin GPIO_PIN_11
 #define output_07_GPIO_Port GPIOA
 #define output_05_Pin GPIO_PIN_12
