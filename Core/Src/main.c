@@ -123,6 +123,8 @@ uint8_t  do_state[NUM_DO];
 
 uint32_t last_heartbeat = 0;
 uint32_t last_adc_report = 0;
+uint8_t  pa13_gpio_mode = 0;
+uint8_t  pa14_gpio_mode = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -200,6 +202,50 @@ void processCommand(const char* cmd) {
                           val ? GPIO_PIN_SET : GPIO_PIN_RESET);
         snprintf(tx_buf, sizeof(tx_buf), "PB5_OK,%d\n", val);
         uart_send(tx_buf);
+        return;
+    }
+
+    // PA13 GPIO control
+    if (strcmp(cmd, "PA13_HIGH") == 0) {
+        __HAL_RCC_GPIOA_CLK_ENABLE();
+        GPIO_InitTypeDef GPIO_InitStruct = {0};
+        GPIO_InitStruct.Pin   = GPIO_PIN_13;
+        GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
+        GPIO_InitStruct.Pull  = GPIO_NOPULL;
+        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+        HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_SET);
+        pa13_gpio_mode = 1;
+        uart_send("PA13_OK\n");
+        return;
+    }
+
+    if (strcmp(cmd, "PA13_LOW") == 0) {
+        if (pa13_gpio_mode == 1)
+            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_RESET);
+        uart_send("PA13_OK\n");
+        return;
+    }
+
+    // PA14 GPIO control
+    if (strcmp(cmd, "PA14_HIGH") == 0) {
+        __HAL_RCC_GPIOA_CLK_ENABLE();
+        GPIO_InitTypeDef GPIO_InitStruct = {0};
+        GPIO_InitStruct.Pin   = GPIO_PIN_14;
+        GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
+        GPIO_InitStruct.Pull  = GPIO_NOPULL;
+        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+        HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_14, GPIO_PIN_SET);
+        pa14_gpio_mode = 1;
+        uart_send("PA14_OK\n");
+        return;
+    }
+
+    if (strcmp(cmd, "PA14_LOW") == 0) {
+        if (pa14_gpio_mode == 1)
+            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_14, GPIO_PIN_RESET);
+        uart_send("PA14_OK\n");
         return;
     }
 }
