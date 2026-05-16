@@ -43,7 +43,7 @@
 #define DEBOUNCE_MS         25
 #define MAX_CMD_LEN         32
 #define HEARTBEAT_MS        5000
-#define ADC_REPORT_MS       100     // send analog values every 100ms
+#define ADC_REPORT_MS       500     // send analog values every 100ms
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
