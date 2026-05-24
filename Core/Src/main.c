@@ -43,7 +43,8 @@
 #define DEBOUNCE_MS         25
 #define MAX_CMD_LEN         32
 #define HEARTBEAT_MS        5000
-#define ADC_REPORT_MS       500     // send analog values every 100ms
+#define ADC_REPORT_MS       500     // send analog values every 500ms
+#define SHUTDOWN_DELAY_MS   15000   // 15-second delay before PB5 goes LOW
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -121,10 +122,16 @@ uint32_t di_last_change[NUM_DI];
 
 uint8_t  do_state[NUM_DO];
 
-uint32_t last_heartbeat = 0;
+uint32_t last_heartbeat  = 0;
 uint32_t last_adc_report = 0;
-uint8_t  pa13_gpio_mode = 0;
-uint8_t  pa14_gpio_mode = 0;
+uint8_t  pa13_gpio_mode  = 0;
+uint8_t  pa14_gpio_mode  = 0;
+
+/* ---- PB5 / Shutdown state ---- */
+uint8_t  pb5_state          = 0;   // tracks current PB5 output level
+uint8_t  shutdown_pending   = 0;   // waiting for ACK + 15-s delay
+uint8_t  ack_received       = 0;   // set when "ACK" is parsed from UART
+uint32_t shutdown_start_time = 0;  // tick when ACK was received
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -183,7 +190,7 @@ void processCommand(const char* cmd) {
     if (strncmp(cmd, "AO,", 3) == 0) {
         const char* p = strchr(cmd + 3, ',');
         if (p == NULL) return;
-        uint8_t ch  = (uint8_t)atoi(cmd + 3);
+        uint8_t  ch  = (uint8_t)atoi(cmd + 3);
         uint32_t val = (uint32_t)atoi(p + 1);
         if (val > 4095) val = 4095;
         if (ch == 1)
@@ -200,8 +207,18 @@ void processCommand(const char* cmd) {
         uint8_t val = (uint8_t)atoi(cmd + 4);
         HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5,
                           val ? GPIO_PIN_SET : GPIO_PIN_RESET);
+        pb5_state = val ? 1 : 0;   // keep pb5_state in sync
         snprintf(tx_buf, sizeof(tx_buf), "PB5_OK,%d\n", val);
         uart_send(tx_buf);
+        return;
+    }
+
+    // ACK from host — arms the 15-second shutdown countdown
+    if (strcmp(cmd, "ACK") == 0) {
+        if (shutdown_pending) {
+            ack_received        = 1;
+            shutdown_start_time = HAL_GetTick();
+        }
         return;
     }
 
@@ -316,6 +333,7 @@ int main(void)
       di_last_change[i] = HAL_GetTick();
   }
 
+
   /* Arm UART RX interrupt */
   HAL_UART_Receive_IT(&huart1, &rx_byte, 1);
 
@@ -334,38 +352,67 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  uint32_t now = HAL_GetTick();
+      uint32_t now = HAL_GetTick();
 
-	  /* ---- Scan DI with debounce ---- */
-	  for (uint8_t i = 0; i < NUM_DI; i++) {
-	      uint8_t reading = HAL_GPIO_ReadPin(DI_PINS[i].port, DI_PINS[i].pin);
-	      if (reading != di_last_state[i]) {
-	          di_last_change[i] = now;
-	          di_last_state[i]  = reading;
-	      }
-	      if ((now - di_last_change[i]) > DEBOUNCE_MS) {
-	          if (reading != di_state[i]) {
-	              di_state[i] = reading;
-	              snprintf(tx_buf, sizeof(tx_buf), "DI,%d,%d\n", i+1, di_state[i]);
-	              uart_send(tx_buf);
-	          }
-	      }
-	  }
+      /* ---- Scan DI with debounce ---- */
+      for (uint8_t i = 0; i < NUM_DI; i++) {
+          uint8_t reading = HAL_GPIO_ReadPin(DI_PINS[i].port, DI_PINS[i].pin);
+          if (reading != di_last_state[i]) {
+              di_last_change[i] = now;
+              di_last_state[i]  = reading;
+          }
+          if ((now - di_last_change[i]) > DEBOUNCE_MS) {
+              if (reading != di_state[i]) {
+                  di_state[i] = reading;
+                  snprintf(tx_buf, sizeof(tx_buf), "DI,%d,%d\n", i+1, di_state[i]);
+                  uart_send(tx_buf);
 
-	  /* ---- Heartbeat ---- */
-	  if ((now - last_heartbeat) >= HEARTBEAT_MS) {
-	      last_heartbeat = now;
-	      uart_send("HB\n");
-	  }
+                  /* ---- DI21 (index 20) rising edge → PB5 / Shutdown logic ---- */
+                  if (i == 20 && reading == 1) {
+                      if (pb5_state == 0) {
+                          /* PB5 was LOW → turn it HIGH (power on) */
+                          HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);
+                          pb5_state = 1;
+                          uart_send("PB5_OK,1\n");
+                      } else {
+                          /* PB5 already HIGH → request shutdown confirmation */
+                          shutdown_pending    = 1;
+                          ack_received        = 0;
+                          shutdown_start_time = 0;
+                          uart_send("Shutdown_confirmation\n");
+                      }
+                  }
+              }
+          }
+      }
 
-	  /* ---- Analog report ---- */
-	  if ((now - last_adc_report) >= ADC_REPORT_MS) {
-	      last_adc_report = now;
-	      snprintf(tx_buf, sizeof(tx_buf), "AI,1,%d\n", adc_buf[0]);
-	      uart_send(tx_buf);
-	      snprintf(tx_buf, sizeof(tx_buf), "AI,2,%d\n", adc_buf[1]);
-	      uart_send(tx_buf);
-	  }
+      /* ---- Shutdown countdown (non-blocking) ---- */
+      if (shutdown_pending && ack_received) {
+          /* shutdown_start_time is set inside processCommand when ACK arrives */
+          if ((now - shutdown_start_time) >= SHUTDOWN_DELAY_MS) {
+              HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_RESET);
+              pb5_state           = 0;
+              shutdown_pending    = 0;
+              ack_received        = 0;
+              shutdown_start_time = 0;
+              uart_send("PB5_OK,0\n");
+          }
+      }
+
+      /* ---- Heartbeat ---- */
+      if ((now - last_heartbeat) >= HEARTBEAT_MS) {
+          last_heartbeat = now;
+          uart_send("HB\n");
+      }
+
+      /* ---- Analog report ---- */
+      if ((now - last_adc_report) >= ADC_REPORT_MS) {
+          last_adc_report = now;
+          snprintf(tx_buf, sizeof(tx_buf), "AI,1,%d\n", adc_buf[0]);
+          uart_send(tx_buf);
+          snprintf(tx_buf, sizeof(tx_buf), "AI,2,%d\n", adc_buf[1]);
+          uart_send(tx_buf);
+      }
   }
   /* USER CODE END 3 */
 }
